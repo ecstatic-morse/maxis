@@ -130,27 +130,46 @@ BitVec solve_brute_force(const Graph &graph) {
 }
 
 GeneticSolver::GeneticSolver(
-    const Graph &g, size_t pop_size, std::unique_ptr<genetic::Mutator> mutator,
+    const Graph &old_g, size_t pop_size, std::unique_ptr<genetic::Mutator> mutator,
     std::unique_ptr<genetic::Recombinator> recombinator,
     std::unique_ptr<genetic::Selector> selector)
-    : g_{g}, mutator_{std::move(mutator)},
+    : g_{0}, mutator_{std::move(mutator)},
       recombinator_{std::move(recombinator)}, selector_{std::move(selector)},
       total_fitness_{0.0}, iterations_{0} {
-  auto order = boost::num_vertices(g);
+
+  auto order = boost::num_vertices(old_g);
 
   // Sort vertices by weight / out_degree
-  promising_vertices_.resize(order);
-  std::iota(promising_vertices_.begin(), promising_vertices_.end(), 0);
-  std::sort(promising_vertices_.begin(), promising_vertices_.end(),
-            [&g](const auto &a, const auto &b) {
-              return g[a] / boost::out_degree(a, g) >
-                     g[b] / boost::out_degree(b, g);
+  std::vector promising_vertices(order, 0);
+  std::iota(promising_vertices.begin(), promising_vertices.end(), 0);
+  std::sort(promising_vertices.begin(), promising_vertices.end(),
+            [&old_g](const auto &a, const auto &b) {
+              return old_g[a] / boost::out_degree(a, old_g) >
+                     old_g[b] / boost::out_degree(b, old_g);
             });
+
+  // Map the vertex indices in the input graph to the vertices in the sorted graph
+  std::vector old_vertices(order, 0);
+  for (int i = 0; i < order; ++i) {
+    old_vertices[promising_vertices[i]] = i;
+  }
+
+  g_ = Graph(order);
+  for (int i = 0; i < order; ++i) {
+    auto v = promising_vertices[i];
+    g_[i] = old_g[v]; // Copy the vertex weight
+
+    // Copy the edges
+    for (auto [e, end] = boost::out_edges(v, old_g); e != end; ++e) {
+      auto u = boost::target(*e, old_g);
+      boost::add_edge(i, old_vertices[u], g_);
+    }
+  }
 
   // Populate with random genomes
   for (int i = 0; i < pop_size; ++i) {
     for (;;) {
-      if (insert_member(Member::random(g))) {
+      if (insert_member(Member::random(g_))) {
         break;
       }
     }
@@ -189,7 +208,7 @@ Member &GeneticSolver::iterate() {
     member.modify_skip_fitness_update([this, a, b](BitVec &genome) {
       recombinator_->breed(population_[a], population_[b], genome);
       mutator_->mutate(genome);
-      local_search(genome);
+      greedy_local_search(genome);
     });
 
     auto [_, ok] = duplicates_.emplace(member.genome());
@@ -227,34 +246,35 @@ bool GeneticSolver::insert_member(Member m) {
 //
 // Currently it is the performance bottleneck for the genetic algorithm as it
 // runs in O(|V|^2) time where |V| is the order of the graph.
-void GeneticSolver::local_search(BitVec &bv) {
+void GeneticSolver::greedy_local_search(BitVec &bv) {
   // Exclude the neighbors of all bits set in the bitvec, starting at the most
   // promising and ending with the least.
-  for (auto v : promising_vertices_) {
-    if (!bv[v])
-      continue;
-
+  FOR_EACH_BV(v, bv) {
     for (auto [e, end] = boost::out_edges(v, g_); e != end; ++e) {
       auto u = boost::target(*e, g_);
       bv.reset(u);
     }
   }
 
-  // Add back vertices whch have no neighbors in the bitset.
-  for (auto v : promising_vertices_) {
-    if (bv[v])
-      continue;
+  // Invert the bit vector so that it now contains all UNSET vertices.
+  // (This would not be necessary if we could iterate over unset bits)
+  bv.flip();
 
+  // Add back vertices whch have no neighbors in the bitset.
+  FOR_EACH_BV(v, bv) {
     auto [e, end] = boost::out_edges(v, g_);
     auto has_neighbors = std::any_of(e, end, [this, &bv](auto e) {
       auto u = boost::target(e, g_);
-      return bv[u];
+      return !bv[u];
     });
 
     if (!has_neighbors) {
-      bv.set(v);
+      bv.reset(v);
     }
   }
+
+  // Restore the original semantics of the bitset.
+  bv.flip();
 }
 
 size_t GeneticSolver::migrate_from(std::vector<Member> &src) {

@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "boost/graph/adjacency_list.hpp"
+// #include "boost/graph/adjacency_matrix.hpp"
 
 #include "./bitvec.hpp"
 
@@ -13,8 +14,7 @@ namespace maxis {
 
 using Weight = double;
 
-using Graph =
-    boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS, Weight>;
+using Graph = boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS, Weight>;
 // using Graph = boost::adjacency_matrix<boost::undirectedS, Weight>;
 
 // Parses a test graph in ASCII (not binary) DIMACS format
@@ -99,10 +99,10 @@ public:
 
 private:
   bool insert_member(Member m);
-  void local_search(BitVec &bv);
+  void greedy_local_search(BitVec &bv);
 
 private:
-  const Graph &g_;
+  Graph g_;
 
   // Genetic operators
   std::unique_ptr<genetic::Mutator> mutator_;
@@ -114,9 +114,6 @@ private:
 
   Weight total_fitness_;
   size_t iterations_;
-
-  // The set of vertices in the graph, sorted by weight / out_degree.
-  std::vector<size_t> promising_vertices_;
 };
 
 } // namespace maxis
