@@ -17,14 +17,10 @@ solution is required in a reasonable amount of time. Like all genetic
 algorithms, the solver provides no guarantee that a given solution is
 optimal.
 
-This solver is designed mostly to explore the efficacy of genetic
-algorithms on highly-constrained NP optimization problems. Emphasis was
-put on flexibility over performance. For example, the algorithm can use
-a multitude of containers to store individuals in the population,
-allowing benchmarks of different container types (e.g. vector&lt;bool&gt; vs
-vector&lt;char&gt;). It also allows the user to select from several genetic
-operators or implement their own by inheriting from a virtual base
-class.
+This solver is designed mostly to explore the efficacy of genetic algorithms on
+highly-constrained NP optimization problems. Emphasis was put on flexibility
+over performance. It also allows the user to select from several genetic
+operators or implement their own by inheriting from a virtual base class.
 
 Compilation and Usage
 ---------------------
@@ -32,11 +28,10 @@ Compilation and Usage
 The solver must be built by a compiler with c++14 support and depends on boost.
 This means at least clang-3.5 or gcc-5.
 
-If DEBUG is defined during compilation, the solver will log the state of
-the population every few thousand iterations. Object files will be put
-in the build directory, and the executable will appear in the bin
-directory. You may need to edit the Makefile to point your compiler to
-the boost header files on your system.
+The solver will log the state of the population every few thousand iterations.
+Object files will be put in the build directory, and the executable will appear
+in the bin directory. You may need to edit the Makefile to point your compiler
+to the boost header files on your system.
 
 Run `bin/graph --help` for usage information. The `--file` option can be
 passed positionally to the executable.

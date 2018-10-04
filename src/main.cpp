@@ -11,6 +11,7 @@
 #include "maxis/genetic.hpp"
 #include "maxis/parallel.hpp"
 #include "maxis/solver.hpp"
+#include "maxis/random.hpp"
 
 using namespace maxis;
 
@@ -135,6 +136,9 @@ int main(int argc, char *argv[]) {
 
     // Move each worker onto a new thread and begin iterating.
     threads.emplace_back([i, &worker, &io_lock]() {
+      // Seed the thread local random number generator
+      random::seed(std::random_device()());
+
       auto max_fitness = std::numeric_limits<double>::lowest();
       for (;;) {
         auto &member = worker.iterate();
