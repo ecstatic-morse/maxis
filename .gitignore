@@ -1,0 +1,6 @@
+bin/
+build/
+
+*.o
+compile_commands.json
+*.data
